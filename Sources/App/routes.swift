@@ -1,20 +1,18 @@
 import Vapor
+import Authentication
+import Crypto
 
 /// Register your application's routes here.
 public func routes(_ router: Router) throws {
-    // Basic "It works" example
-    router.get { req in
-        return "It works!"
-    }
-    
-    // Basic "Hello, world!" example
-    router.get("hello") { req in
-        return "Hello, world!"
-    }
 
-    // Example of configuring a controller
+    //In order to properly register our UsersController with the router
+    let usersController = UsersController()
+    try router.register(collection: usersController)
+    
+    //Register these new routes to the server so that they can be accessed
+    let userLoginRouteController = UserLoginController()
+    try userLoginRouteController.boot(router: router)
+    
     let todoController = TodoController()
-    router.get("todos", use: todoController.index)
-    router.post("todos", use: todoController.create)
-    router.delete("todos", Todo.parameter, use: todoController.delete)
+    try todoController.boot(router: router)
 }

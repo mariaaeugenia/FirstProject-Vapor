@@ -1,23 +1,38 @@
+import Foundation
 import Vapor
+import Fluent
+import Authentication
 
-/// Controls basic CRUD operations on `Todo`s.
-final class TodoController {
-    /// Returns a list of all `Todo`s.
-    func index(_ req: Request) throws -> Future<[Todo]> {
-        return Todo.query(on: req).all()
+class TodoController: RouteCollection {
+    
+    func boot(router: Router) throws {
+        let group = router.grouped("api", "todos")
+        group.get(use: getTodosHandler)
+        
+        let basicAuthMiddleware = UserLogin.basicAuthMiddleware(using: BCrypt)
+        let guardAuthMiddleware = UserLogin.guardAuthMiddleware()
+        let basicAuthGroup = group.grouped([basicAuthMiddleware, guardAuthMiddleware])
+        basicAuthGroup.post(use: createTodoHandler)
+        basicAuthGroup.delete(Todo.parameter, use: deleteTodoHandler)
     }
+}
 
-    /// Saves a decoded `Todo` to the database.
-    func create(_ req: Request) throws -> Future<Todo> {
-        return try req.content.decode(Todo.self).flatMap { todo in
-            return todo.save(on: req)
+//MARK: Helper
+private extension TodoController {
+    
+    func getTodosHandler(_ request: Request) throws -> Future<[Todo]> {
+        return Todo.query(on: request).all()
+    }
+    
+    func createTodoHandler(_ request: Request) throws -> Future<Todo> {
+        return try request.content.decode(Todo.self).flatMap { todo in
+            return todo.save(on: request)
         }
     }
-
-    /// Deletes a parameterized `Todo`.
-    func delete(_ req: Request) throws -> Future<HTTPStatus> {
-        return try req.parameters.next(Todo.self).flatMap { todo in
-            return todo.delete(on: req)
-        }.transform(to: .ok)
+    
+    func deleteTodoHandler(_ request: Request) throws -> Future<HTTPStatus> {
+        return try request.parameters.next(Todo.self).flatMap { todo in
+            return todo.delete(on: request)
+            }.transform(to: .ok)
     }
 }
